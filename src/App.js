@@ -1,23 +1,20 @@
 import logo from './logo.svg';
 import './App.css';
+import Header from './Header.js';
+import FrontPage from './FrontPage.js';
+import { Helmet } from 'react-helmet';
+import FeaturesSection from './FeaturesSection.js';
+
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Helmet>
+        <title>GymTracker - Elevate your workouts</title>
+      </Helmet>
+      <Header></Header>
+      <FrontPage></FrontPage>
+      <FeaturesSection></FeaturesSection>
     </div>
   );
 }
