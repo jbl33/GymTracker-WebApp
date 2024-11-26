@@ -110,7 +110,7 @@ function LogWorkout() {
         document.getElementById("results-message").scrollIntoView({ behavior: "smooth" });
         throw new Error("User ID is null");
       }
-      const random = Math.floor(Math.random() * 1000000000000);
+      const random = Math.floor(Math.random() * 100000000000000);
       const date = new Date().toISOString().slice(0, 10);
       const workoutID = random;
 
