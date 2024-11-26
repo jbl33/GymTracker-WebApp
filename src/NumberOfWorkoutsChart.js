@@ -54,8 +54,8 @@ const WorkoutChart = () => {
 
   const options = {
     title: 'Weekly Workout Count',
-    hAxis: { title: 'Week', titleTextStyle: { color: '#333' }, slantedText: true, slantedTextAngle: 45 },
-    vAxis: { minValue: 0, title: 'Number of Workouts' },
+    hAxis: { title: 'Number of Workouts', titleTextStyle: { color: '#333' }, slantedText: true, slantedTextAngle: 45 },
+    vAxis: { minValue: 0, title: 'Week' },
     chartArea: { width: '70%', height: '70%' },
     legend: 'none',
   };
