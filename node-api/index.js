@@ -20,6 +20,12 @@ const registerLimiter = rateLimit({
   message: { message: 'Too many registration attempts, please try again later' }
 });
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: { message: 'Too many login attempts, please try again later' }
+});
+
 // Parsing request bodies (urlencoded or json)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -407,7 +413,7 @@ app.post('/updatePassword', async (req, res, next) => {
 });
 
 // Login route
-app.post('/login', async (req, res, next) => {
+app.post('/login', loginLimiter, async (req, res, next) => {
   const { email, password } = req.body;
   
   if (!email || !password) {
