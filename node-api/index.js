@@ -311,11 +311,11 @@ const rotateAuthKey = async () => {
     const users = await getUsers(`SELECT * FROM users WHERE auth_key_expiry < ?`, [new Date()]);
 
     users.forEach((user) => {
-      const newAuthKey = generateRandomKey(16);
+      const newAuthKey = generateRandomKey(16); // Generate a new auth key
       const newExpiryDate = new Date();
       newExpiryDate.setDate(newExpiryDate.getDate() + 7); // Set expiry date to 7 days from now
 
-      db.run(`UPDATE users SET auth_key = ?, auth_key_expiry = ? WHERE id = ?`, [newAuthKey, newExpiryDate, user.id]);
+      db.run(`UPDATE users SET auth_key = ?, auth_key_expiry = ? WHERE id = ?`, [newAuthKey, newExpiryDate, user.id]); // Update the auth key and expiry date
     });
   } catch (error) {
     console.error('Error rotating auth keys:', error);
@@ -350,7 +350,7 @@ app.post('/register', registerLimiter, async (req, res, next) => {
     authKeyExpiry.setDate(authKeyExpiry.getDate() + 7); // Auth key expires in 7 days
 
     db.run(
-      `INSERT INTO users (firstName, lastName, email, password, auth_key, auth_key_expiry) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (firstName, lastName, email, password, auth_key, auth_key_expiry) VALUES (?, ?, ?, ?, ?, ?)`, // Inserting the user into the database
       [firstName, lastName, email, hashedPassword, authKey, authKeyExpiry],
       function (err) {
         if (err) {
