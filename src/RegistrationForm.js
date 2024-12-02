@@ -11,9 +11,9 @@ function RegistrationForm() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const apiKey = cookies.get('apiKey');
+        const authKey = cookies.get('authKey');
       
-        if (apiKey) {
+        if (authKey) {
           navigate('/dashboard'); // Routing the user back to the login page if they haven't logged in or key expired
         }
       }, []);

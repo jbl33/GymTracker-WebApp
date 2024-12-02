@@ -6,8 +6,19 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
+const { promisify } = require('util');
+
 const app = express();
 const port = 3000;
+
+// Setup rate limiter for registration
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: { message: 'Too many registration attempts, please try again later' }
+});
 
 // Parsing request bodies (urlencoded or json)
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -17,15 +28,14 @@ app.use(cors({
   origin: 'http://localhost:3001' // Allow requests from port 3001 (React app)
 }));
 
-// Load OpenAI API key from file 'openai-api-key.txt'
-let openai
+// Load OpenAI Auth key from file 'openai-Auth-key.txt'
+let openai;
 try {
   openai = fs.readFileSync('openai-bearer.txt', 'utf8').trim();
 }
 catch (err) {
-  console.error('Failed to read OpenAI API key:', err);
+  console.error('Failed to read OpenAI Auth key:', err);
 }
-
 
 // Connecting to the SQLite database
 const dbPath = path.resolve('gymtracker.db');
@@ -44,7 +54,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
       lastName TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-      api_key TEXT NOT NULL UNIQUE
+      auth_key TEXT NOT NULL UNIQUE,
+      auth_key_expiry DATETIME NOT NULL
     )`);
 
     db.run(`CREATE TABLE IF NOT EXISTS exercises (
@@ -90,7 +101,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     )`);
 
     const exercises = [
-      ["Dumbbell Bench Press", "Targets chest muscles for strength and definition."],
+["Dumbbell Bench Press", "Targets chest muscles for strength and definition."],
 ["Incline Dumbbell Bench Press", "Focuses on upper chest muscles."],
 ["Decline Dumbbell Bench Press", "Emphasizes lower part of the chest."],
 ["Dumbbell Flyes", "Stretches and builds the pectoral muscles."],
@@ -259,10 +270,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   });
 });
 
-
-// Ensure that all database calls return only once, by including conditional checks
-// Had to implement due to continuous errors; One endpoint sending 2 responses
-// results in the database crashing
+// Ensure all database calls return only once, by including conditional checks
 function safeCallback(err, res, next) {
   if (err) {
     console.error('Error executing query:', err);
@@ -273,27 +281,71 @@ function safeCallback(err, res, next) {
   }
 }
 
+// Function to hash & salt a password
+const hashPassword = async (password) => {
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+  return hashedPassword;
+};
+
+// Function to generate a random key, used for generating the authKey for the user
+function generateRandomKey(length) {
+  return crypto.randomBytes(length).toString('hex');
+}
+
+// Validate email
+const validateEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+// Rotate authKey periodically every 7 days
+const rotateAuthKey = async () => {
+  try {
+    const getUsers = promisify(db.all).bind(db);
+    const users = await getUsers(`SELECT * FROM users WHERE auth_key_expiry < ?`, [new Date()]);
+
+    users.forEach((user) => {
+      const newAuthKey = generateRandomKey(16);
+      const newExpiryDate = new Date();
+      newExpiryDate.setDate(newExpiryDate.getDate() + 7); // Set expiry date to 7 days from now
+
+      db.run(`UPDATE users SET auth_key = ?, auth_key_expiry = ? WHERE id = ?`, [newAuthKey, newExpiryDate, user.id]);
+    });
+  } catch (error) {
+    console.error('Error rotating auth keys:', error);
+  }
+};
+
+// Rotate auth keys every day at midnight
+setInterval(rotateAuthKey, 24 * 60 * 60 * 1000);
+
 // Registration endpoint
-app.post('/register', async (req, res, next) => {
+app.post('/register', registerLimiter, async (req, res, next) => {
   const { firstName, lastName, email, password } = req.body;
 
   if (!firstName || !lastName || !email || !password) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  if (!/^(?=.*\d)(?=.*[A-Z])[A-Za-z\d!@#$%^&*()\-+\=]{8,}$/.test(password)) { // Password must be at least 8 characters long and contain a number and a capital letter
+  if (!validateEmail(email)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
+  if (!/^(?=.*\d)(?=.*[A-Z])[A-Za-z\d!@#$%^&*()\-+=]{8,}$/.test(password)) {
     return res.status(400).json({
-      message: 'Password must be at least 8 characters long and contain a number and a capital letter'
+      message: 'Password must be at least 8 characters long and contain a number and a cAuthtal letter'
     });
   }
 
   try {
-    const hashedPassword = await hashPassword(password); // Hashing the password before storing it in the database
-    const apiKey = generateRandomKey(32); // Generating a random 32 digit key for the user
-    // This key is meant to act as a private identifier for the user used to authenticate requests
+    const hashedPassword = await hashPassword(password); // Hashing the password before storing it
+    const authKey = generateRandomKey(16); // Generating a random key
+    const authKeyExpiry = new Date();
+    authKeyExpiry.setDate(authKeyExpiry.getDate() + 7); // Auth key expires in 7 days
+
     db.run(
-      `INSERT INTO users (firstName, lastName, email, password, api_key) VALUES (?, ?, ?, ?, ?)`,
-      [firstName, lastName, email, hashedPassword, apiKey],
+      `INSERT INTO users (firstName, lastName, email, password, auth_key, auth_key_expiry) VALUES (?, ?, ?, ?, ?, ?)`,
+      [firstName, lastName, email, hashedPassword, authKey, authKeyExpiry],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE constraint failed')) {
@@ -316,29 +368,30 @@ app.post('/register', async (req, res, next) => {
 
 // Endpoint to update password
 app.post('/updatePassword', async (req, res, next) => {
-  const { apiKey, oldPassword, newPassword } = req.body;
+  const { authKey, oldPassword, newPassword } = req.body;
 
-  if (!apiKey || !oldPassword || !newPassword) {
+  if (!authKey || !oldPassword || !newPassword) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  if (!/^(?=.*\d)(?=.*[A-Z])[A-Za-z\d!@#$%^&*()\-+\=]{8,}$/.test(newPassword)) {
+  if (!/^(?=.*\d)(?=.*[A-Z])[A-Za-z\d!@#$%^&*()\-+=]{8,}$/.test(newPassword)) {
     return res.status(400).json({
-      message: 'New password must be at least 8 characters long and contain a number and a capital letter'
+      message: 'New password must be at least 8 characters long and contain a number and a cAuthtal letter'
     });
   }
+
   try {
-    db.get(`SELECT * FROM users WHERE api_key = ?`, [apiKey], async (err, user) => {
+    db.get(`SELECT * FROM users WHERE auth_key = ?`, [authKey], async (err, user) => {
       if (safeCallback(err, res, next)) return;
       if (!user) {
-        return res.status(401).json({ message: 'Invalid API key' });
+        return res.status(401).json({ message: 'Invalid Auth key' });
       }
       const isPasswordMatch = await bcrypt.compare(oldPassword, user.password);
       if (!isPasswordMatch) {
         return res.status(401).json({ message: 'Old password is incorrect' });
       }
       const hashedNewPassword = await hashPassword(newPassword);
-      db.run(`UPDATE users SET password = ? WHERE api_key = ?`, [hashedNewPassword, apiKey], function(err) {
+      db.run(`UPDATE users SET password = ? WHERE auth_key = ?`, [hashedNewPassword, authKey], function(err) {
         if (safeCallback(err, res, next)) return;
         if (!res.headersSent) {
           res.status(200).json({ message: 'Password updated successfully' });
@@ -356,21 +409,44 @@ app.post('/updatePassword', async (req, res, next) => {
 // Login route
 app.post('/login', async (req, res, next) => {
   const { email, password } = req.body;
+  
   if (!email || !password) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
+  
   try {
     db.get(`SELECT * FROM users WHERE email = ?`, [email], async (err, user) => {
       if (safeCallback(err, res, next)) return;
       if (!user) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
-      const isPasswordMatch = await bcrypt.compare(password, user.password); // Compare the provided password with the hashed password in the database
+      const isPasswordMatch = await bcrypt.compare(password, user.password);
       if (isPasswordMatch) {
         const userWithoutPassword = { ...user };
-        delete userWithoutPassword.password; // Removing the password from the response
-        if (!res.headersSent) {
-          res.status(200).json({ message: 'Login successful', user: userWithoutPassword });
+        delete userWithoutPassword.password;
+        // Check auth_key expiry date
+        const now = new Date();
+        if (new Date(user.auth_key_expiry) < now) {
+          const newAuthKey = generateRandomKey(16);
+          const newExpiryDate = new Date();
+          newExpiryDate.setDate(newExpiryDate.getDate() + 7);
+          db.run(`UPDATE users SET auth_key = ?, auth_key_expiry = ? WHERE id = ?`, 
+            [newAuthKey, newExpiryDate, user.id], 
+            (err) => {
+              if (err) {
+                console.error('Error updating auth key:', err);
+                return res.status(500).json({ message: 'Error during login' });
+              }
+              userWithoutPassword.auth_key = newAuthKey;
+              userWithoutPassword.auth_key_expiry = newExpiryDate;
+              if (!res.headersSent) {
+                res.status(200).json({ message: 'Login successful', user: userWithoutPassword });
+              }
+            });
+        } else {
+          if (!res.headersSent) {
+            res.status(200).json({ message: 'Login successful', user: userWithoutPassword });
+          }
         }
       } else {
         return res.status(401).json({ message: 'Invalid email or password' });
@@ -385,7 +461,7 @@ app.post('/login', async (req, res, next) => {
 });
 
 // Endpoint for uploading workout templates to the database
-app.post('/insertTemplate', (req, res, next) => {
+app.post('/insertTemplate', async (req, res, next) => {
   const { name, description, public, sets, userID } = req.body;
   if (!name || !sets || !userID) {
     return res.status(400).json({ message: 'Missing required fields' });
@@ -445,13 +521,13 @@ app.get('/getExercises', (req, res, next) => {
   });
 });
 
-// Endpoint used to grab a user's ID number based on their API key
+// Endpoint used to grab a user's ID number based on their Auth key
 app.get('/getUserID', (req, res, next) => {
-  const apiKey = req.query.apiKey;
-  db.get(`SELECT id FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+  const authKey = req.query.authKey;
+  db.get(`SELECT id FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
     if (safeCallback(err, res, next)) return;
     if (!user) {
-      return res.status(401).json({ message: 'Invalid API key' });
+      return res.status(401).json({ message: 'Invalid Auth key' });
     }
     if (!res.headersSent) {
       res.status(200).json({ userId: user.id });
@@ -461,19 +537,18 @@ app.get('/getUserID', (req, res, next) => {
 
 // Endpoint to insert a new workout entity into the database
 app.post('/insertWorkout', (req, res, next) => {
-  let { userID, date, workoutID, apiKey, rpe } = req.body;
+  let { userID, date, workoutID, authKey, rpe } = req.body;
   if(!rpe) {
     rpe = 0;
   }
-  db.get(`SELECT id FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+  db.get(`SELECT id FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
     if (safeCallback(err, res, next)) return;
     if (!user) {
-      return res.status(401).json({ message: 'Invalid API key' });
+      return res.status(401).json({ message: 'Invalid Auth key' });
     }
     if (user.id !== userID) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
-    // Ensure to run this block only if the above condition returns so the response is properly sent
     db.run(`INSERT INTO workouts (user_id, date, workout_id, rpe) VALUES (?, ?, ?, ?)`, [userID, date, workoutID, rpe], function(err) {
       if (safeCallback(err, res, next)) return;
       if (!res.headersSent) {
@@ -506,18 +581,16 @@ app.get('/getUserWorkouts', (req, res, next) => {
 });
 
 // Endpoint to grab all of the sets saved by a user
-// You can add an optional query parameter to filter by exercise type
-// This is used for efficiency and convenience: prevents looping through all of a user's old workouts for analysis
 app.get('/getAllUserSets', (req, res, next) => {
-  const apiKey = req.query.apiKey;
+  const authKey = req.query.authKey;
   const exerciseType = req.query.exerciseType;
-  if (!apiKey) {
-    return res.status(404).json({ message: 'API key is required' });
+  if (!authKey) {
+    return res.status(404).json({ message: 'Auth key is required' });
   }
-  db.get(`SELECT id FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+  db.get(`SELECT id FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
     if (safeCallback(err, res, next)) return;
     if (!user) {
-      return res.status(401).json({ message: 'Invalid API key' });
+      return res.status(401).json({ message: 'Invalid Auth key' });
     }
     const userId = user.id;
     let query = `
@@ -526,7 +599,7 @@ app.get('/getAllUserSets', (req, res, next) => {
       JOIN workouts w ON ws.workout_id = w.workout_id
       WHERE w.user_id = ?`;
     const params = [userId];
-    if (exerciseType) { // Add exercise type to the query if specified
+    if (exerciseType) {
       query += ` AND ws.exercise_name = ?`;
       params.push(exerciseType);
     }
@@ -542,7 +615,7 @@ app.get('/getAllUserSets', (req, res, next) => {
 // Endpoint to grab all of the sets saved by a user for a specific workout
 app.get('/getWorkoutSets', (req, res, next) => {
   const workoutID = req.query.workoutID;
-  const apiKey = req.query.apiKey;
+  const authKey = req.query.authKey;
   if (!workoutID) {
     return res.status(400).json({ message: 'Workout ID is required' });
   }
@@ -551,10 +624,10 @@ app.get('/getWorkoutSets', (req, res, next) => {
     if (!workout) {
       return res.status(404).json({ message: 'Workout not found' });
     }
-    db.get(`SELECT id FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+    db.get(`SELECT id FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
       if (safeCallback(err, res, next)) return;
       if (!user) {
-        return res.status(401).json({ message: 'Invalid API key' });
+        return res.status(401).json({ message: 'Invalid Auth key' });
       }
       if (user.id !== workout.user_id) {
         return res.status(403).json({ message: 'Unauthorized' });
@@ -569,13 +642,13 @@ app.get('/getWorkoutSets', (req, res, next) => {
   });
 });
 
-// Endpoint to grab user information based on apiKey *meant to act as a private key, not to be shared*
+// Endpoint to grab user information based on authKey
 app.get('/getUser', (req, res, next) => {
-  const apiKey = req.query.apiKey;
-  db.get(`SELECT * FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+  const authKey = req.query.authKey;
+  db.get(`SELECT * FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
     if (safeCallback(err, res, next)) return;
     if (!user) {
-      return res.status(401).json({ message: 'Invalid API key' });
+      return res.status(401).json({ message: 'Invalid Auth key' });
     }
 
     delete user.password; // Removing the password from the user object before sending it in the response
@@ -585,10 +658,10 @@ app.get('/getUser', (req, res, next) => {
   });
 });
 
-// Endpoint to update an old workout set that has already been submitted
+// Endpoint to update an old workout set
 app.post('/updateWorkoutSet', (req, res, next) => {
-  const { apiKey, setID, weight, reps } = req.body;
-  if (!apiKey || !setID || weight === undefined || reps === undefined) {
+  const { authKey, setID, weight, reps } = req.body;
+  if (!authKey || !setID || weight === undefined || reps === undefined) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
   db.get(`SELECT ws.id, w.user_id FROM workout_sets ws JOIN workouts w ON ws.workout_id = w.workout_id WHERE ws.id = ?`, [setID], (err, workoutSet) => {
@@ -596,10 +669,10 @@ app.post('/updateWorkoutSet', (req, res, next) => {
     if (!workoutSet) {
       return res.status(404).json({ message: 'Workout set not found' });
     }
-    db.get(`SELECT id FROM users WHERE api_key = ?`, [apiKey], (err, user) => {
+    db.get(`SELECT id FROM users WHERE auth_key = ?`, [authKey], (err, user) => {
       if (safeCallback(err, res, next)) return;
       if (!user) {
-        return res.status(401).json({ message: 'Invalid API key' });
+        return res.status(401).json({ message: 'Invalid Auth key' });
       }
       if (user.id !== workoutSet.user_id) {
         return res.status(403).json({ message: 'Unauthorized' });
@@ -614,11 +687,10 @@ app.post('/updateWorkoutSet', (req, res, next) => {
   });
 });
 
-// Endpoint to delete a workout set from the database
-// Takes in apiKey for authentication
+// Endpoint to delete a workout set
 app.post('/deleteWorkout', (req, res, next) => {
-  const { apiKey, workoutID } = req.body;
-  db.get('SELECT id FROM users WHERE api_key = ?', [apiKey], (err, user) => {
+  const { authKey, workoutID } = req.body;
+  db.get('SELECT id FROM users WHERE auth_key = ?', [authKey], (err, user) => {
     if (safeCallback(err, res, next)) return;
     if (!user) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -639,38 +711,13 @@ app.post('/deleteWorkout', (req, res, next) => {
   });
 });
 
-// Fun little endpoint that uses AI to generate a workout based on the
-// user's selected muscle groups and available equipment
-// Uses GPT3.5 from OpenAI (dirt cheap pretty much)
-const parseWorkoutResponse = (jsonResponse) => {
-  try {
-    // Assuming the content from the model can be directly parsed as JSON
-    return JSON.parse(jsonResponse);
-  } catch (error) {
-    console.error("Error parsing workout JSON response", error);
-    throw new Error("Invalid JSON format from API response");
-  }
-};
-
-const extractJSON = (responseContent) => {
-  try {
-    // Remove markdown formatting like ```json and any leading/trailing whitespace
-    const cleanContent = responseContent.replace(/```json\s*|```/g, '').trim();
-
-    // Parse the clean string as JSON
-    return JSON.parse(cleanContent);
-  } catch (error) {
-    console.error("Error parsing workout JSON response", error);
-    throw new Error("Invalid JSON format from API response");
-  }
-};
-
+// Fun little endpoint that uses AI to generate a workout
 app.post("/getSuggestedWorkout", async (req, res, next) => {
   const { workoutTypes, equipment, numberOfSets } = req.body; 
   try {
     const formattedWorkoutTypes = workoutTypes.join(", ");
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
+      "https://Auth.openai.com/v1/chat/completions",
       {
         model: "gpt-4o",
         messages: [
@@ -702,7 +749,7 @@ app.post("/getSuggestedWorkout", async (req, res, next) => {
               If you select chest, pick exercises that target the upper, lower, and middle chest. For legs, target quads, hamstrings, and calves. etc...
               Here is a full list of possible exercise names, do not include any exercises not specifically mentioned on this list.:
               Dumbbell Bench Press, Incline Dumbbell Bench Press, Decline Dumbbell Bench Press, Dumbbell Flyes, Dumbbell Pullover, Dumbbell Shoulder Press, Dumbbell Lateral Raise, Dumbbell Front Raise, Dumbbell Rear Delt Fly, Dumbbell Shrugs, Dumbbell Bicep Curl, Hammer Curl, Concentration Curl, Dumbbell Tricep Extension, Dumbbell Tricep Kickback, Dumbbell Squats, Goblet Squat, Dumbbell Lunges, Dumbbell Step-Ups, Dumbbell Deadlift, Dumbbell Romanian Deadlift, Dumbbell Calf Raise, Dumbbell Bent Over Row, One Arm Dumbbell Row, Renegade Row, Dumbbell Thruster, Dumbbell Swing, Turkish Get-Up, Man Makers, Dumbbell Around the World, Side Bend, Dead Bug, Arnold Press, Dumbbell High Pull, Dumbbell Woodchop, Reverse Lunge with Dumbbell Curl, Single Leg Deadlift, Dumbbell Russian Twist, Dumbbell Side Lunge, Box Step-Up with Press, Single Arm Dumbbell Snatch, Dumbbell Push Press, Alternating Dumbbell Curl, Cross Body Curl, Zottman Curl, Dumbbell Skull Crusher, Dumbbell Upright Row, Rear Delt Rotate, Barbell Bench Press, Incline Barbell Bench Press, Decline Barbell Bench Press, Military Press, Barbell Push Press, Barbell Squats, Front Squat, Lower Back Squats, Overhead Squat, Barbell Deadlift, Sumo Deadlift, Barbell Row, Pendlay Row, Barbell Shrugs, Zercher Squat, Clean and Jerk, Snatch, Barbell Curl, Barbell Tricep Extension, Skull Crushers, Barbell Lunges, Good Mornings, Hang Clean, Power Clean, Floor Press, Glute Bridge with Barbell, Landmine Press, Landmine Row, Barbell Hack Squat, Reverse Grip Bent Over Row, Split Jerk, Hip Thrust, Seated Overhead Press, Barbell Calf Raise, Dead Row, Bent Press, Jefferson Squat, Cuban Press, Bradford Press, Isometric Deadlift, Muscle Snatch, Pause Squat, Squat and Press, Bear Complex, Curl Bar Bicep Curl, Close Grip Curl, Reverse Grip Curl, Preacher Curl, Curl Bar Skull Crusher, Overhead Tricep Extension, Barbell Preacher Curl, Spider Curl, Drag Curl, Standing Tricep Extension, Incline Curl, Incline Tricep Extension, Squat Rack Squats, Front Rack Position Squat, Squat Rack Overhead Press, Rack Pulls, Half Rack Deadlift, Shrug from Squat Rack, Box Squats, Push Press from Squat Rack, Anderson Squats, Dumbbell Pullovers, Single Arm Preacher Curl, Reverse Preacher Curl, Hammer Curl on Preacher, One-Arm Dumbbell Preacher Curl, Decline Bench Dumbbell Curl, Wide Grip Preacher Curl, Resistance Band Squats, Resistance Band Lunges, Resistance Band Deadlifts, Resistance Band Push Up, Resistance Band Chest Press, Cable Pulldown, Cable Row, Cable Crossover, Cable Shoulder Press, Cable Fly, Cable Lateral Raise, Cable Front Raise, Cable Reverse Fly, Cable Tricep Pushdown, Face Pull, Cable Woodchop, Cable Kickbacks, Cable Pull-Through, Medicine Ball Slam, Medicine Ball Chest Pass, Medicine Ball Russian Twist, Medicine Ball Overhead Throw, Medicine Ball Sit-Up, Medicine Ball V-Up, Medicine Ball Mountain Climbers, Kettlebell Swing, Kettlebell Snatch, Kettlebell Clean, Kettlebell Press, Kettlebell Goblet Squat, Kettlebell Full Pistol Squat
-              `,
+            `,
           },
         ],
       },
@@ -726,26 +773,17 @@ app.post("/getSuggestedWorkout", async (req, res, next) => {
   }
 });
 
-
-app.listen(port, () => { // Start the server
+app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
 
-// Function to hash & salt a password
-const hashPassword = async (password) => {
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-  return hashedPassword;
-};
-
-// Function to generate a random key, used for generating the apiKey for the user
-function generateRandomKey(length) {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let randomKey = '';
-
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    randomKey += characters[randomIndex];
+// Function to extract JSON safely from Auth response
+const extractJSON = (responseContent) => {
+  try {
+    const cleanContent = responseContent.replace(/```json\s*|```/g, '').trim();
+    return JSON.parse(cleanContent);
+  } catch (error) {
+    console.error("Error parsing workout JSON response", error);
+    throw new Error("Invalid JSON format from Auth response");
   }
-  return randomKey;
-}
+};

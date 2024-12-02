@@ -36,11 +36,11 @@ function LogWorkout() {
 
   useEffect(() => {
     const fetchPastWorkouts = async () => {
-      const apiKey = cookies.get("apiKey");
-      if (apiKey) {
+      const authKey = cookies.get("authKey");
+      if (authKey) {
         try {
           const response = await fetch(
-            `http://localhost:3000/getAllUserSets?apiKey=${apiKey}`
+            `http://localhost:3000/getAllUserSets?authKey=${authKey}`
           );
           const data = await response.json();
           const workoutsByDate = data.sets.reduce((acc, set) => {
@@ -85,11 +85,11 @@ function LogWorkout() {
 
   const submitExercise = async () => {
     try {
-      const apiKey = cookies.get("apiKey");
-      if (!apiKey) {
+      const authKey = cookies.get("authKey");
+      if (!authKey) {
         throw new Error("API key is missing");
       }
-      const userID = await fetchUserID(apiKey);
+      const userID = await fetchUserID(authKey);
       if (workoutLog.length === 0) {
         document.getElementById("results-message").innerHTML = `
                     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -152,7 +152,7 @@ function LogWorkout() {
           date,
           workoutID,
           workoutLog,
-          cookies.get("apiKey")
+          cookies.get("authKey")
         );
         workoutLog.forEach((log) => {
           if (!log.reps || !log.weight) {
@@ -178,10 +178,10 @@ function LogWorkout() {
     });
   };
 
-  const fetchUserID = async (apiKey) => {
+  const fetchUserID = async (authKey) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/getUser?apiKey=${apiKey}`
+        `http://localhost:3000/getUser?authKey=${authKey}`
       );
       const data = await response.json();
       return data.user.id;
@@ -191,7 +191,7 @@ function LogWorkout() {
     }
   };
 
-  const insertWorkout = async (userID, date, workoutID, workoutLog, apiKey) => {
+  const insertWorkout = async (userID, date, workoutID, workoutLog, authKey) => {
     var rpeElements = document.getElementsByName("rpe");
     var rpe = rpeElements.length > 0 ? rpeElements[0].value : 0;
     if (!rpe) {
@@ -211,7 +211,7 @@ function LogWorkout() {
         date,
         workoutID,
         workoutLog,
-        apiKey,
+        authKey,
         rpe,
       }),
     });

@@ -9,7 +9,7 @@ function ChangePassword() {
   const [loading, setLoading] = useState(false);
 
   const cookies = new Cookies();
-  const apiKey = cookies.get('apiKey');
+  const authKey = cookies.get('authKey');
 
   const validatePassword = (password) => {
     return /^(?=.*\d)(?=.*[A-Z])[A-Za-z\d!@#$%^&*()\-+\=]{8,}$/.test(password);
@@ -36,7 +36,7 @@ function ChangePassword() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          apiKey,
+          authKey,
           oldPassword,
           newPassword,
         }),

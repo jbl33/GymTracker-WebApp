@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 function PreviousWorkoutTable() {
   const cookies = new Cookies();
-  const apiKey = cookies.get("apiKey");
+  const authKey = cookies.get("authKey");
   const navigate = useNavigate();
   const [workouts, setWorkouts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -13,16 +13,16 @@ function PreviousWorkoutTable() {
   const [selectedWorkoutId, setSelectedWorkoutId] = useState(null);
 
   useEffect(() => {
-    if (!apiKey) {
+    if (!authKey) {
       navigate("/login");
     }
-  }, [apiKey, navigate]);
+  }, [authKey, navigate]);
 
   useEffect(() => {
     const fetchWorkouts = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3000/getAllUserSets?apiKey=${apiKey}`
+          `http://localhost:3000/getAllUserSets?authKey=${authKey}`
         );
         const data = await response.json();
 
@@ -49,7 +49,7 @@ function PreviousWorkoutTable() {
     };
 
     fetchWorkouts();
-  }, [apiKey]);
+  }, [authKey]);
 
   const confirmDeleteWorkout = (workoutID) => {
     setSelectedWorkoutId(workoutID);
@@ -66,7 +66,7 @@ function PreviousWorkoutTable() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          apiKey: apiKey,
+          authKey: authKey,
           workoutID: selectedWorkoutId,
         }),
       });

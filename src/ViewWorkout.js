@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 
-const ViewWorkout = ({ workout_ID, api_Key }) => {
+const ViewWorkout = ({ workout_ID, auth_key }) => {
     return (
     <div>
     <div className="previous-workouts"></div>

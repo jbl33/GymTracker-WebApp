@@ -10,7 +10,7 @@ const WorkoutCalendar = () => {
   const [workouts, setWorkouts] = useState([]);
   const [expandedWorkoutId, setExpandedWorkoutId] = useState(null);
   const cookies = new Cookies();
-  const apiKey = cookies.get('apiKey');
+  const authKey = cookies.get('authKey');
 
   useEffect(() => {
     fetchWorkoutDates();
@@ -27,7 +27,7 @@ const WorkoutCalendar = () => {
   const fetchWorkoutDates = async () => {
     try {
       const userIdResponse = await axios.get('http://localhost:3000/getUserID', {
-        params: { apiKey },
+        params: { authKey: authKey },
       });
       const userId = userIdResponse.data.userId;
 
@@ -47,7 +47,7 @@ const WorkoutCalendar = () => {
     try {
       const formattedDate = formatDate(date);
       const userIdResponse = await axios.get('http://localhost:3000/getUserID', {
-        params: { apiKey },
+        params: { authKey },
       });
       const userId = userIdResponse.data.userId;
 
@@ -63,7 +63,7 @@ const WorkoutCalendar = () => {
         workoutsOnDate.map(async (workout) => {
           try {
             const workoutSetsResponse = await axios.get('http://localhost:3000/getWorkoutSets', {
-              params: { workoutID: workout.workout_id, apiKey },
+              params: { workoutID: workout.workout_id, authKey },
             });
 
             return {

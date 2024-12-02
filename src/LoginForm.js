@@ -13,8 +13,8 @@ function LoginForm() {
 
 
   useEffect(() => {
-    const apiKey = cookies.get('apiKey');
-    if (apiKey) {
+    const authKey = cookies.get('authKey');
+    if (authKey) {
       navigate('/dashboard');
     }
   }, []);
@@ -39,9 +39,9 @@ function LoginForm() {
       if (response.ok) {
         const data = await response.json();
 
-        if (data.user.api_key) {
+        if (data.user.auth_key) {
           const expiresIn = new Date(Date.now() + 60 * 60 * 1000);
-          cookies.set('apiKey', data.user.api_key, { expires: expiresIn });
+          cookies.set('authKey', data.user.auth_key, { expires: expiresIn });
           cookies.set('userID', data.user.id, { expires: expiresIn });
 
           navigate('/dashboard');

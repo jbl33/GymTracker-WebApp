@@ -15,9 +15,9 @@ function AccountInformation() {
       setIsLoading(true);
       setError(null);
 
-      const apiKey = cookies.get('apiKey');
+      const authKey = cookies.get('authKey');
       try {
-        const response = await fetch(`http://localhost:3000/getUser?apiKey=${apiKey}`);
+        const response = await fetch(`http://localhost:3000/getUser?authKey=${authKey}`);
         if (!response.ok) {
           throw new Error(`Error fetching user data: ${response.statusText}`);
         }
@@ -39,7 +39,7 @@ function AccountInformation() {
   };
 
   const confirmLogOut = () => {
-    cookies.remove('apiKey');
+    cookies.remove('authKey');
     navigate('/login');
   };
 

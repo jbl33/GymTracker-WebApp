@@ -10,16 +10,16 @@ const WorkoutChart = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const apiKey = cookies.get('apiKey');
+    const authKey = cookies.get('authKey');
 
-    if (!apiKey) {
+    if (!authKey) {
       navigate('/login');
       return;
     }
 
     const fetchWorkoutData = async () => {
       try {
-        const userResponse = await axios.get('http://localhost:3000/getUser', { params: { apiKey } });
+        const userResponse = await axios.get('http://localhost:3000/getUser', { params: { authKey } });
         const userId = userResponse.data.user.id;
 
         const exercisesResponse = await axios.get('http://localhost:3000/getUserWorkouts', { params: { userID: userId } });

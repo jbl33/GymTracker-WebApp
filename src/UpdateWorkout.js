@@ -13,18 +13,18 @@ function UpdateWorkout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!cookies.get("apiKey")) {
+    if (!cookies.get("authKey")) {
       navigate("/login");
     }
   }, [cookies, navigate]);
 
   useEffect(() => {
     const fetchPastWorkouts = async () => {
-      const apiKey = cookies.get("apiKey");
-      if (apiKey) {
+      const authKey = cookies.get("authKey");
+      if (authKey) {
         try {
           const response = await fetch(
-            `http://localhost:3000/getAllUserSets?apiKey=${apiKey}`
+            `http://localhost:3000/getAllUserSets?authKey=${authKey}`
           );
           const data = await response.json();
 
@@ -102,8 +102,8 @@ function UpdateWorkout() {
       return;
     }
 
-    const apiKey = cookies.get("apiKey");
-    if (!apiKey) {
+    const authKey = cookies.get("authKey");
+    if (!authKey) {
       showNotification("API key is missing");
       return;
     }
@@ -118,7 +118,7 @@ function UpdateWorkout() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              apiKey,
+              authKey,
               setID: set.id,
               reps: set.reps,
               weight: set.weight,

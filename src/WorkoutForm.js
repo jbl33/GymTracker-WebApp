@@ -11,10 +11,10 @@ const WorkoutForm = () => {
   const workoutPlanRef = useRef(null); 
   const cookies = new Cookies(); 
   const navigate = useNavigate(); 
-  const apiKey = cookies.get('apiKey'); 
+  const authKey = cookies.get('authKey'); 
   const userID = cookies.get('userID'); 
 
-  if(!apiKey) { 
+  if(!authKey) { 
     navigate("/login"); 
   } 
 

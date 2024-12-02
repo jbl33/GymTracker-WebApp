@@ -34,16 +34,17 @@ const WorkoutChartComponent = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const apiKey = cookies.get('apiKey');
-      if (!apiKey) {
+      const authKey = cookies.get('authKey');
+      if (!authKey) {
         navigate('/login');
+        console.error('No auth key found in cookies.');
         return;
       }
 
       try {
         if (selectedExercise) {
           const setsResponse = await axios.get('http://localhost:3000/getAllUserSets', {
-            params: { apiKey, exerciseType: selectedExercise },
+            params: { authKey, exerciseType: selectedExercise },
           });
           const allSets = setsResponse.data.sets;
 
