@@ -4,7 +4,7 @@
   "description": "API for gymtracker",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -18,5 +18,9 @@
     "path": "^0.12.7",
     "sqlite3": "^5.1.7",
     "universal-cookie": "^7.2.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }

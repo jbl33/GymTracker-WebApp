@@ -282,7 +282,7 @@ function LogWorkout() {
             body: JSON.stringify({
               name,
               description,
-              public: isPublic,
+              publicMode: isPublic,
               sets: workoutLog,
               userID,
             }),

@@ -468,11 +468,11 @@ app.post('/login', loginLimiter, async (req, res, next) => {
 
 // Endpoint for uploading workout templates to the database
 app.post('/insertTemplate', async (req, res, next) => {
-  const { name, description, public, sets, userID } = req.body;
+  const { name, description, publicMode, sets, userID } = req.body;
   if (!name || !sets || !userID) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
-  db.run(`INSERT INTO templates (name, description, public, user_id) VALUES (?, ?, ?, ?)`, [name, description, public, userID], function(err) {
+  db.run(`INSERT INTO templates (name, description, public, user_id) VALUES (?, ?, ?, ?)`, [name, description, publicMode, userID], function(err) {
     if (safeCallback(err, res, next)) return;
     const templateId = this.lastID;
     sets.forEach((set, index) => {
@@ -793,3 +793,5 @@ const extractJSON = (responseContent) => {
     throw new Error("Invalid JSON format from Auth response");
   }
 };
+
+module.exports = app;
