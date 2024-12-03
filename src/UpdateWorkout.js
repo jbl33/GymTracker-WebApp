@@ -108,6 +108,17 @@ function UpdateWorkout() {
       return;
     }
 
+    // Loop through sets and make sure no negatives are included or impossibly high data
+    for (const set of currentWorkout) {
+      if (set.reps < 0 || set.weight < 0 || set.reps > 1000 || set.weight > 1000) {
+        showNotification("Invalid data in workout sets. Please check your inputs.");
+        // Jump to notification
+        document.getElementById("update-tag").scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+    }
+    
+
     try {
       for (const set of currentWorkout) {
         const response = await fetch(

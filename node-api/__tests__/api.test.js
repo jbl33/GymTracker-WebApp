@@ -113,7 +113,7 @@ describe('API Endpoints', () => {
     it('should insert a new workout entry', async () => {
       const response = await request(app).post('/insertWorkout').send({
         userID: 4,
-        date: '2023-10-15',
+        date: '2023-12-02',
         workoutID: random,
         authKey: '7c4de65c1c45520258e5925753328793',
         rpe: 7

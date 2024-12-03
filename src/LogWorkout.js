@@ -241,6 +241,20 @@ function LogWorkout() {
       return;
     }
 
+    // Loop through sets and make sure none say "Select an exercise"
+    for (let i = 0; i < workoutLog.length; i++) {
+      if (workoutLog[i].exerciseName === "") {
+        document.getElementById("results-message").innerHTML = `
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline">Please select an exercise for all sets.</span>
+          </div>
+        `;
+        return;
+      }
+    }
+    
+
     const modal = document.createElement("div");
     modal.className =
       "fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-10";
@@ -270,6 +284,15 @@ function LogWorkout() {
         const description = document.getElementById(
           "template-description"
         ).value;
+        if (!description) {
+          document.getElementById("results-message").innerHTML = `
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong class="font-bold">Error!</strong>
+              <span class="block sm:inline">Please provide a description for the template.</span>
+            </div>
+          `;
+          return;
+        }
         const isPublic = document.getElementById("make-public").checked;
         const userID = cookies.get("userID");
 
