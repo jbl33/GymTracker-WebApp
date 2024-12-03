@@ -20,7 +20,6 @@ describe('API Endpoints', () => {
     });
 
     // Test for existing email
-    // Ensure this email exists in your test database to test this scenario
     it('should not register a user with an existing email', async () => {
       const response = await request(app).post('/register').send({
         firstName: 'Jane',
