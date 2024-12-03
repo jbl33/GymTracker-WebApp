@@ -1,6 +1,7 @@
 import logo from './logo.svg'; 
 import './App.css'; 
 import FeaturesSection from './FeaturesSection';
+import Footer from './Footer';
  
 function FrontPage() { 
   return ( 

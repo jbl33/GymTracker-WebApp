@@ -4,6 +4,7 @@ import Header from './Header.js';
 import FrontPage from './FrontPage.js';
 import { Helmet } from 'react-helmet';
 import FeaturesSection from './FeaturesSection.js';
+import Footer from './Footer.js';
 
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
       <Header></Header>
       <FrontPage></FrontPage>
       <FeaturesSection></FeaturesSection>
+      <Footer></Footer>
     </div>
   );
 }
