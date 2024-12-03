@@ -1,6 +1,6 @@
 const request = require('supertest');
 const express = require('express');
-const app = require('../index.js');  // Adjust the path to point to your app file
+const app = require('../index.js');
 
 describe('API Endpoints', () => {
 
