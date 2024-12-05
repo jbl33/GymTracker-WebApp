@@ -105,6 +105,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
       weight REAL NOT NULL,
       FOREIGN KEY (workout_id) REFERENCES workouts(id)
     )`);
+    
+      db.run(`CREATE TABLE IF NOT EXISTS weight_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        weight REAL NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )`);
+    });
 
     const exercises = [
 ["Dumbbell Bench Press", "Targets chest muscles for strength and definition."],
@@ -274,7 +283,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
       }
     });
   });
-});
 
 // Ensure all database calls return only once, by including conditional checks
 function safeCallback(err, res, next) {
@@ -713,6 +721,41 @@ app.post('/deleteWorkout', (req, res, next) => {
           res.status(200).json({ message: 'Workout deleted successfully' });
         }
       });
+    });
+  });
+});
+
+// Endpoint to add weight entry
+app.post('/addWeightEntry', async (req, res) => {
+  const { authKey, date, weight } = req.body;
+  db.get('SELECT id FROM users WHERE auth_key = ?', [authKey], (err, user) => {
+    if (err || !user) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    db.run(`INSERT INTO weight_entries (user_id, date, weight) VALUES (?, ?, ?)`, 
+      [user.id, date, weight], 
+      function(err) {
+        if (err) {
+          return res.status(500).json({ message: 'Internal server error' });
+        }
+        res.status(200).json({ message: 'Weight entry added successfully' });
+    });
+  });
+});
+
+
+// Endpoint to retrieve weight entries
+app.get('/getWeightEntries', async (req, res) => {
+  const { authKey } = req.query;
+  db.get('SELECT id FROM users WHERE auth_key = ?', [authKey], (err, user) => {
+    if (err || !user) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    db.all(`SELECT * FROM weight_entries WHERE user_id = ?`, [user.id], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ message: 'Internal server error' });
+      }
+      res.json({ weightEntries: rows });
     });
   });
 });

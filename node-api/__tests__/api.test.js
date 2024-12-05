@@ -38,7 +38,7 @@ describe('API Endpoints', () => {
     it('should successfully log in a user with correct details', async () => {
       const response = await request(app).post('/login').send({
         email: 'jd@gmail.com',
-        password: 'Example123'
+        password: 'Grady217'
       });
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Login successful');
@@ -200,6 +200,7 @@ describe('API Endpoints', () => {
 
   /*
   // Suggested Workout
+  // Removed until openai-bearer.txt is added
   describe('POST /getSuggestedWorkout', () => {
     it('should generate a workout suggestion based on inputs', async () => {
       const response = await request(app).post('/getSuggestedWorkout').send({

@@ -9,6 +9,8 @@ import { Helmet } from 'react-helmet';
 import UpdateWorkout from './UpdateWorkout';
 import ChangePassword from './ChangePassword';
 import WorkoutChartComponent from './WorkoutChartComponent';
+import DietTracker from './WeightTracker';
+import WeightTracker from './WeightTracker';
 
 function DashboardLayout() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -42,6 +44,16 @@ function DashboardLayout() {
           onClick={() => handleTabClick('workout')}
         >
           Log a Workout
+        </button>
+      </li>
+      <li className="mb-2">
+        <button
+          className={`block p-2 hover:bg-gray-700 ${
+            activeTab === 'diet-tracking' ? 'bg-gray-900 text-white' : ''
+          }`}
+          onClick={() => handleTabClick('weight-tracking')}
+        >
+          Weight Tracking
         </button>
       </li>
       <li className="mb-2">
@@ -126,6 +138,14 @@ function DashboardLayout() {
         <title>Log a Workout - GymTracker</title>
           </Helmet>
             <LogWorkout> </LogWorkout>
+          </>
+        )}
+        {activeTab === 'weight-tracking' && (
+          <>
+          <Helmet>
+        <title>Weight Tracking - GymTracker</title>
+          </Helmet>
+            <WeightTracker></WeightTracker>
           </>
         )}
         {activeTab === 'update-workout' && (

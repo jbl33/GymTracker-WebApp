@@ -40,7 +40,7 @@ function LoginForm() {
         const data = await response.json();
 
         if (data.user.auth_key) {
-          const expiresIn = new Date(Date.now() + 60 * 60 * 1000);
+          const expiresIn = new Date(Date.now() + 60 * 60 * 4 * 1000); // 4 hours from current time
           cookies.set('authKey', data.user.auth_key, { expires: expiresIn });
           cookies.set('userID', data.user.id, { expires: expiresIn });
 
