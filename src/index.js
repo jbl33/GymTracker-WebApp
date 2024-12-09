@@ -9,8 +9,8 @@ import RegistrationForm from './RegistrationForm';
 import AccountInformation from './AccountInformation';
 import LogWorkout from './LogWorkout';
 import Panel from './Panel';
-import DashboardLayout from './Dashboard';
 import WorkoutChart from './NumberOfWorkoutsChart';
+import Dashboard from './Dashboard';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -21,7 +21,7 @@ root.render(
        <Route path='/register' element={<RegistrationForm />} />
        <Route path='/account' element={<AccountInformation />} />
        <Route path='/workout' element={<LogWorkout />} />
-       <Route path='/dashboard' element={<DashboardLayout />} />
+       <Route path='/dashboard' element={<Dashboard />} />
      </Routes>
    </Router>
 );

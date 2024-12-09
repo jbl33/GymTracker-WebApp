@@ -9,10 +9,9 @@ import { Helmet } from 'react-helmet';
 import UpdateWorkout from './UpdateWorkout';
 import ChangePassword from './ChangePassword';
 import WorkoutChartComponent from './WorkoutChartComponent';
-import DietTracker from './WeightTracker';
 import WeightTracker from './WeightTracker';
 
-function DashboardLayout() {
+function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const handleTabClick = (tab) => {
@@ -168,4 +167,4 @@ function DashboardLayout() {
   );
 }
 
-export default DashboardLayout;
+export default Dashboard;
