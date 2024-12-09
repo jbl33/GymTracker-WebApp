@@ -98,12 +98,10 @@ function DashboardLayout() {
       </li>
     </ul>
     <div className="mt-auto">
-    {/* Main Content Area */}
+    {}
   </div>
 </div>
-
-
-      {/* Main Content Area */}
+      {}
       <div className="flex-1 p-4 overflow-y-auto">
         {activeTab === 'dashboard' && (
           <>

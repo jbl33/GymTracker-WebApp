@@ -34,10 +34,10 @@ app.use(cors({
   origin: 'http://localhost:3001' // Allow requests from port 3001 (React app)
 }));
 
-// Load OpenAI Auth key from file 'openai-Auth-key.txt'
-let openai;
+// Load OpenAI Auth key from file 'openai-bearer.txt'
+let openaiAPIKey;
 try {
-  openai = fs.readFileSync('openai-bearer.txt', 'utf8').trim();
+  openaiAPIKey = fs.readFileSync('openai-bearer.txt', 'utf8').trim();
 }
 catch (err) {
   console.error('Failed to read OpenAI Auth key:', err);
@@ -766,7 +766,7 @@ app.post("/getSuggestedWorkout", async (req, res, next) => {
   try {
     const formattedWorkoutTypes = workoutTypes.join(", ");
     const response = await axios.post(
-      "https://Auth.openai.com/v1/chat/completions",
+      "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-4o",
         messages: [
@@ -804,7 +804,7 @@ app.post("/getSuggestedWorkout", async (req, res, next) => {
       },
       {
         headers: {
-          Authorization: `Bearer ` + openai,
+          Authorization: `Bearer ` + openaiAPIKey,
           "Content-Type": "application/json",
         },
       }

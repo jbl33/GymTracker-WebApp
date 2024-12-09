@@ -4,6 +4,7 @@ const app = require('../index.js');
 
 describe('API Endpoints', () => {
 
+  const authKey = '982c040f722c7beff6637435e5e8910f';
   // Registration Endpoint
   describe('POST /register', () => {
     it('should register a new user', async () => {
@@ -24,7 +25,7 @@ describe('API Endpoints', () => {
       const response = await request(app).post('/register').send({
         firstName: 'Jane',
         lastName: 'Doe',
-        email: 'jlargent33@gmail.com',
+        email: 'jd@gmail.com',
         password: 'Password1!'
       });
       expect(response.status).toBe(409);
@@ -38,7 +39,7 @@ describe('API Endpoints', () => {
     it('should successfully log in a user with correct details', async () => {
       const response = await request(app).post('/login').send({
         email: 'jd@gmail.com',
-        password: 'Grady217'
+        password: 'Example123'
       });
       expect(response.status).toBe(200);
       expect(response.body.message).toBe('Login successful');
@@ -99,9 +100,9 @@ describe('API Endpoints', () => {
   // Get UserID by AuthKey
   describe('GET /getUserID', () => {
     it('should return user ID for a valid auth key', async () => {
-      const response = await request(app).get('/getUserID').query({ authKey: '7c4de65c1c45520258e5925753328793' });
+      const response = await request(app).get('/getUserID').query({ authKey: authKey });
       expect(response.status).toBe(200);
-      expect(response.body.userId).toBe(4);
+      expect(response.body.userId).toBe(7);
     });
   });
 
@@ -111,10 +112,10 @@ describe('API Endpoints', () => {
   describe('POST /insertWorkout', () => {
     it('should insert a new workout entry', async () => {
       const response = await request(app).post('/insertWorkout').send({
-        userID: 4,
+        userID: 7,
         date: '2023-12-02',
         workoutID: random,
-        authKey: '7c4de65c1c45520258e5925753328793',
+        authKey: authKey,
         rpe: 7
       });
       expect(response.status).toBe(201);
@@ -187,30 +188,33 @@ describe('API Endpoints', () => {
   });
 
   // Delete Workout
-  describe('POST /deleteWorkout', () => {
-    it('should delete a workout by workoutID', async () => {
-      const response = await request(app).post('/deleteWorkout').send({
-        authKey: '7c4de65c1c45520258e5925753328793',
-        workoutID: random
+  describe('POST /addWeightEntry', () => {
+    it('should add a new weight entry for a user', async () => {
+      const response = await request(app).post('/addWeightEntry').send({
+        authKey: authKey,
+        date: '2023-12-02',
+        weight: 70
       });
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Workout deleted successfully');
+      expect(response.body.message).toBe('Weight entry added successfully');
+    });
+
+  describe('GET /getWeightEntries', () => {
+    it('should retrieve all weight entries for a user', async () => {
+      const response = await request(app).get('/getWeightEntries').query({
+        authKey: authKey
+      });
+      expect(response.status).toBe(200);
+      expect(response.body.weightEntries).toBeInstanceOf(Array);
+    });
+
+    it('should not retrieve weight entries with an invalid auth key', async () => {
+      const response = await request(app).get('/getWeightEntries').query({
+        authKey: 'invalid_auth_key'
+      });
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe('Unauthorized');
     });
   });
-
-  /*
-  // Suggested Workout
-  // Removed until openai-bearer.txt is added
-  describe('POST /getSuggestedWorkout', () => {
-    it('should generate a workout suggestion based on inputs', async () => {
-      const response = await request(app).post('/getSuggestedWorkout').send({
-        workoutTypes: ['Chest', 'Back'],
-        equipment: ['Dumbbells', 'Barbells'],
-        numberOfSets: 6
-      });
-      expect(response.status).toBe(200);
-      expect(response.body.exercises).toBeInstanceOf(Array);
-    });
-  });*/
-
+  });
 });

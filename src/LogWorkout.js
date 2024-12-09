@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Cookies from "universal-cookie";
 import { useNavigate } from "react-router-dom";
 import ConfirmationComponent from "./ConfirmationComponent";
+
 function LogWorkout() {
   const [exercises, setExercises] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -80,7 +81,7 @@ function LogWorkout() {
   }, [cookies]);
 
   const addExerciseRow = () => {
-    setWorkoutLog([...workoutLog, { exerciseName: "", reps: "", weight: "" }]);
+    setWorkoutLog([...workoutLog, { exerciseName: "", reps: "", weight: "", isFocused: false }]);
   };
 
   const submitExercise = async () => {
@@ -99,6 +100,17 @@ function LogWorkout() {
                 `;
         document.getElementById("results-message").scrollIntoView({ behavior: "smooth" });
         throw new Error("No sets to log");
+      }
+      // Make sure all exercise names are from the list of exercises
+      if (workoutLog.some((log) => !exercises.some((exercise) => exercise.name === log.exerciseName))) {
+        document.getElementById("results-message").innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong className="font-bold">Error logging workout!</strong>
+                        <span className="block sm:inline">Please ensure all exercises are selected from the list.</span>
+                    </div>
+                `;
+        document.getElementById("results-message").scrollIntoView({ behavior: "smooth" });
+        throw new Error("Invalid exercise name");
       }
       if (!userID) {
         document.getElementById("results-message").innerHTML = `
@@ -474,21 +486,50 @@ function LogWorkout() {
               <tr className="border-b" key={index}>
                 <td className="py-4 px-5">{index + 1}</td>
                 <td className="py-4 px-5">
-                  <select
-                    name="exerciseName"
-                    value={log.exerciseName}
-                    onChange={(e) => handleInputChange(index, e)}
-                    className="block w-full bg-transparent border-b-2 border-gray-300 focus:border-indigo-500 outline-none py-2 transition duration-150"
-                  >
-                    <option value="">Select an exercise</option>
-                    {exercises
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((exercise, idx) => (
-                        <option key={idx} value={exercise.name}>
-                          {exercise.name}
-                        </option>
-                      ))}
-                  </select>
+                  {/* Mange focus per row */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="exerciseName"
+                      value={log.exerciseName}
+                      onChange={(e) => handleInputChange(index, e)}
+                      onFocus={() => {
+                        const newWorkoutLog = [...workoutLog];
+                        newWorkoutLog[index].isFocused = true;
+                        setWorkoutLog(newWorkoutLog);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          const newWorkoutLog = [...workoutLog];
+                          newWorkoutLog[index].isFocused = false;
+                          setWorkoutLog(newWorkoutLog);
+                        }, 200);
+                      }}
+                      className="block w-full bg-transparent border-b-2 border-gray-300 focus:border-indigo-500 outline-none py-2 transition duration-150"
+                      placeholder="Search for an exercise"
+                    />
+                    {log.isFocused && log.exerciseName && (
+                      <div className="absolute bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto z-10">
+                        {exercises
+                          .filter((exercise) =>
+                            exercise.name.toLowerCase().includes(log.exerciseName.toLowerCase())
+                          )
+                          .map((exercise, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                const newWorkoutLog = [...workoutLog];
+                                newWorkoutLog[index].exerciseName = exercise.name;
+                                setWorkoutLog(newWorkoutLog);
+                              }}
+                              className="px-4 py-2 cursor-pointer hover:bg-indigo-100"
+                            >
+                              {exercise.name}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="py-4 px-5">
                   <input
@@ -513,6 +554,9 @@ function LogWorkout() {
                 </td>
               </tr>
             ))}
+            <tr className="border-b">
+              <td className="py-10 px-5" colSpan="4"></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -538,7 +582,7 @@ function LogWorkout() {
           Delete Set
         </button>
        <button
-         onClick={handleConfirmSubmit} // Use this function instead of submitExercise
+         onClick={handleConfirmSubmit}
          className="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white text-lg py-3 rounded-lg transition duration-200"
        >
           Submit Workout

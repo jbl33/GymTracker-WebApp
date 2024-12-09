@@ -7,8 +7,8 @@ const FeaturesSection = () => {
       description: 'GymTracker makes it easy and convenient to log your workouts. Users are always able to view their previous workouts and track their progress over time.',
     },
     {
-        title: 'Visual Progress Tracking',
-        description: 'Easily visualize your improvements over time with detailed graphs and charts in the GymTracker app. Our visual tracking tools help you stay motivated and focused on your fitness goals.',
+        title: 'Weight Tracking',
+        description: 'GymTracker offers a weight tracking feature that allows users to log their weight and view their progress over time.',
     },
     {
       title: 'AI-Powered Workout Generator',

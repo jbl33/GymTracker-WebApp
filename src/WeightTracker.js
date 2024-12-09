@@ -52,7 +52,7 @@ const WeightTracker = () => {
       const response = await axios.get('http://localhost:3000/getWeightEntries', {
         params: { authKey },
       });
-      const entries = response.data.weightEntries;
+      const entries = response.data.weightEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       setWeightEntries(entries);
       calculateWeightChange(entries);
@@ -63,7 +63,7 @@ const WeightTracker = () => {
 
   const handleAddWeight = () => {
     if (!currentWeight) {
-      setError('Weight is required to add an entry.');
+      setError(' You must enter a weight value to add a new entry.');
       return;
     }
     setModalOpen(true);
@@ -112,6 +112,17 @@ const WeightTracker = () => {
     ],
   };
 
+  const chartOptions = {
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: false,
+        min: Math.min(...weightEntries.map(entry => entry.weight)) - 5,
+        max: Math.max(...weightEntries.map(entry => entry.weight)) + 5,
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800">
       <div className="container mx-auto p-8">
@@ -145,7 +156,7 @@ const WeightTracker = () => {
           </div>
 
           <div className="w-full md:w-2/3 bg-white p-6 rounded-lg shadow-md">
-            <Bar data={chartData} options={{ maintainAspectRatio: false }} height={200} />
+            <Bar data={chartData} options={chartOptions} height={200} />
           </div>
         </div>
 
