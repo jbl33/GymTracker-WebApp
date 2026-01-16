@@ -1,3 +1,5 @@
+This was a project from when I first leaned React
+
 # Setting up the project
 1. Clone the repository
 2. Insert your OpenAI API key into openai-bearer.txt file
