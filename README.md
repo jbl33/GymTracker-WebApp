@@ -1,4 +1,4 @@
-This was a project from when I first leaned React
+This was a project from when I first learned React
 
 # Setting up the project
 1. Clone the repository
